@@ -1,4 +1,4 @@
-# CSD_AI
+# CSD_AI ![Python application](https://github.com/ddugovic/CSD-Inator/workflows/Python%20application/badge.svg)
 
 A script capable of beating the "stress" mode of Cook Serve Delicious 2, earning impossible achievments along the way! Currently, foods can be made in the holding stations according to priority (Required & Optional foods will only be made once, but all of them will be made), and served.
 
