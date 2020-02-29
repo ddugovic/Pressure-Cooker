@@ -4,7 +4,6 @@ from settings import CookRegion
 from settings import FoodRecipe
 from settings import HSRegion
 from settings import ServeRegion
-from settings import ServingKeyBinds
 from settings import SpecialKeyBinds
 from settings import TextRegions
 from settings import WindowGame
@@ -13,8 +12,8 @@ import mss
 import numpy as np
 import pytesseract
 import pyautogui
-import random
 import re
+import robot
 import time
 
 # FUNCTIONS
@@ -63,7 +62,7 @@ def FoodMaker(ImgInstructionInputBig, WindowRegion, ColorBlobSize):
     print('            Instructions: ' + " ".join(str(elm) for elm in AllInstructions))
 
     # Perform instructions
-    InstructionFollower(AllInstructions)
+    robot.execute(AllInstructions)
     time.sleep(0.1)
 
 
@@ -131,79 +130,9 @@ def InstructionMaker(RawInstruction):
     return(RecipeInstructions)
 
 
-# Define function to follow instructions
-def InstructionFollower(AllInstructions):
-    # Follow instructions in list
-    for Instruction in AllInstructions:
-        for PressKey in range(0, Instruction[1]):
-            pyautogui.keyDown(Instruction[2])
-            pyautogui.keyUp(Instruction[2])
-
-    # Finish recipe
-    pyautogui.press('enter')
-
-
 # Define function to prepare a holding station from a list of recipes
 def PrepareHoldingStation(sct, ColorBlobSize, station, PauseTime, AllRecipeOpts, DoneOpts1, DoneOpts2, DoneOpts11, DoneOpts22):
-    # Open the holding station (can't use.hotkey because of releasing keys backwards)
-    pyautogui.keyDown('tab')
-    time.sleep(PauseTime)
-    pyautogui.keyDown(str(station+1))
-    time.sleep(PauseTime)
-    pyautogui.keyUp('tab')
-    time.sleep(PauseTime)
-    pyautogui.keyUp(str(station+1))
-
-    # Create list of already completed options, but remove from list
-    # if we are revisiting the Holding Station that option was made in
-    for RemoverLoop1 in DoneOpts11:
-        if RemoverLoop1[1] == station+1:
-            DoneOpts1.remove(RemoverLoop1[0])
-            DoneOpts11.remove(RemoverLoop1)
-    for RemoverLoop2 in DoneOpts22:
-        if RemoverLoop2[1] == station+1:
-            DoneOpts2.remove(RemoverLoop2[0])
-            DoneOpts22.remove(RemoverLoop2)
-    FiltOpts1 = set(AllRecipeOpts[0]) - set(DoneOpts1)
-    FiltOpts2 = set(AllRecipeOpts[1]) - set(DoneOpts2)
-
-    # Pick a recipe
-    HoldingStationWindowNum = 1
-    if (HoldingStationWindowNum == 1) & (bool(FiltOpts1) == 1) & (len(AllRecipeOpts[0]) > 0):
-        # Make a Holding Station required recipe
-        print('    Making a Holding Station required recipe')
-        randopt = random.sample(FiltOpts1, 1)[0].lower()
-        DoneOpts1.append(randopt.upper())
-        DoneOpts11.append([randopt.upper(), station+1])
-
-    elif (bool(FiltOpts1) == 0):
-        print('    All Holding Station required recipes made')
-        HoldingStationWindowNum += 1
-        pyautogui.hotkey('space')
-        RecipeOpts = AllRecipeOpts[1]
-        if (HoldingStationWindowNum == 2) & (bool(FiltOpts2) == 1) & (len(AllRecipeOpts[1]) > 0):
-            # Make a Holding Station optional recipe
-            print('    Making a Holding Station optional recipe')
-            randopt = random.sample(FiltOpts2, 1)[0].lower()
-            DoneOpts2.append(randopt.upper())
-            DoneOpts22.append([randopt.upper(), station+1])
-
-        elif (len(AllRecipeOpts[2]) > 0):
-            # Make a side
-            print('    All Holding Station optional recipes made \n    Making a side')
-            RecipeOpts = AllRecipeOpts[2]
-            HoldingStationWindowNum += 1
-            pyautogui.hotkey('space')
-            randopt = random.sample(RecipeOpts, 1)[0].lower()
-
-        else:
-            print('    Nothing to make in a Holding Station!')
-            return
-
-    # Start the recipe!!!
-    print('        Making Recipe ' + randopt.upper())
-    pyautogui.keyDown(randopt)
-    pyautogui.keyUp(randopt)
+    robot.prepare(sct, ColorBlobSize, station, PauseTime, AllRecipeOpts, DoneOpts1, DoneOpts2, DoneOpts11, DoneOpts22)
     time.sleep(0.1)
 
     # Get image
@@ -213,7 +142,7 @@ def PrepareHoldingStation(sct, ColorBlobSize, station, PauseTime, AllRecipeOpts,
     # Clear holding station if food has spoiled
 
 
-# Define function to prepare a holding station from a list of recipes
+# Define function to serve food from a service station and detect results
 def Serve(sct, ImgServeRegion, serviceStation, PauseTime):
     # Determine if food can be served, or is currently cooking
     if np.sum(cv2.inRange(ImgServeRegion, np.array([255, 255, 255]), np.array([255, 255, 255]))) > 45000:
@@ -222,9 +151,7 @@ def Serve(sct, ImgServeRegion, serviceStation, PauseTime):
         print('    Blocked/Waiting for Cooking.')
     else:
         # Attempt to insta-serve
-        pyautogui.keyDown(ServingKeyBinds[str(serviceStation+1)])
-        time.sleep(PauseTime)
-        pyautogui.keyUp(ServingKeyBinds[str(serviceStation+1)])
+        robot.serve(sct, ImgServeRegion, serviceStation, PauseTime)
 
         colorRGB = cv2.cvtColor(np.array(sct.grab(WindowGame)), cv2.COLOR_RGBA2RGB)
         ImgInstaTester = WindowExtractor(colorRGB, FoodRecipe, 0, 0)
@@ -262,13 +189,7 @@ def main():
         if int(np.round(np.mean(WindowExtractor(ImgGameWindow, HSRegion, 1, 0)))) in range(36, 40):
             # Open the holding station
             print('Capturing holding station data!')
-            pyautogui.keyDown('tab')
-            time.sleep(PauseTime)
-            pyautogui.keyDown('1')
-            time.sleep(PauseTime)
-            pyautogui.keyUp('tab')
-            time.sleep(PauseTime)
-            pyautogui.keyUp('1')
+            robot.reset(PauseTime)
 
             # OCR for each page of the holding station, and store results
             for loopRecipeBuilder in range(0, 3):
@@ -279,22 +200,11 @@ def main():
                 HoldingStation_Capturing = 0
 
             # Leave holding station
-            pyautogui.keyDown('enter')
-            pyautogui.keyUp('enter')
+            robot.execute([])
             break
 
     # Start with a side to increase waiting time
-    pyautogui.keyDown('tab')
-    time.sleep(PauseTime)
-    pyautogui.keyDown('6')
-    time.sleep(PauseTime)
-    pyautogui.keyUp('tab')
-    time.sleep(PauseTime)
-    pyautogui.keyUp('6')
-    pyautogui.hotkey('space')
-    pyautogui.hotkey('space')
-    pyautogui.keyDown('a')
-    pyautogui.keyUp('a')
+    robot.side(PauseTime)
     time.sleep(0.1)
 
     # Get image
