@@ -10,9 +10,9 @@ from settings import WindowGame
 import cv2
 import mss
 import numpy as np
-import pytesseract
 import pyautogui
 import re
+import reader
 import robot
 import time
 
@@ -41,7 +41,7 @@ def TextScanHoldingStationOpts(ImgGame, WindowBounds):
         for loopImgFindy in range(0, len(TextRegions['top'])):
             ImgInput = WindowExtractor(WindowBig, WindowBounds, loopImgFindx, loopImgFindy)
 
-            FoundThing = pytesseract.image_to_string(ImgInput[:, :, 0], config='-psm 10')
+            FoundThing = reader.read(ImgInput)
 
             # Add code here to deal with chores
 
@@ -54,7 +54,8 @@ def TextScanHoldingStationOpts(ImgGame, WindowBounds):
 # Define function to follow through recipe finding & creation
 def FoodMaker(ImgInstructionInputBig, WindowRegion, ColorBlobSize):
     # Threshold and scan for instructions
-    RawInstruction = TextScanRecipe(ImgInstructionInputBig, WindowRegion, ColorBlobSize)
+    ImgInstructionRGB = WindowExtractor(ImgInstructionInputBig, FoodRecipe, 0, 0)
+    RawInstruction = reader.read_recipe(ImgInstructionRGB, FoodRecipe, ColorBlobSize)
     print('            Raw Text: ' + str(RawInstruction[0]))
 
     # Build out list to perform
@@ -64,26 +65,6 @@ def FoodMaker(ImgInstructionInputBig, WindowRegion, ColorBlobSize):
     # Perform instructions
     robot.execute(AllInstructions)
     time.sleep(0.1)
-
-
-# Define function to threshold and determine ingredients avaliable for a recipe
-def TextScanRecipe(ImgInstructionInputBig, FoodRecipe, ColorBlobSize):
-    ImgInstructionRGB = WindowExtractor(ImgInstructionInputBig, FoodRecipe, 0, 0)
-    ImgInstruction = cv2.cvtColor(ImgInstructionRGB, cv2.COLOR_RGB2GRAY)
-    # Get number of purple, red, yellow instructions
-    NumPurple = np.sum(cv2.inRange(ImgInstructionRGB, np.array([201, 65, 122]), np.array([201, 65, 122])))
-    NumRed = np.sum(cv2.inRange(ImgInstructionRGB, np.array([65, 65, 201]), np.array([65, 65, 201])))
-    NumYellow = np.sum(cv2.inRange(ImgInstructionRGB, np.array([41, 138, 189]), np.array([41, 138, 189])))
-    PageNums = [int(np.round(NumPurple / ColorBlobSize)),
-                int(np.round(NumRed / ColorBlobSize)),
-                int(np.round(NumYellow / ColorBlobSize))]
-
-    # Get raw instruction
-    ImgInstruction[ImgInstruction == 213] = 255
-    ImgInstruction[ImgInstruction == 192] = 255
-    ImgInstruction[ImgInstruction != 255] = 0
-    RawInstruction = pytesseract.image_to_string(ImgInstruction, config='-psm 11').replace('\n', ' ').replace('ENTER', '')
-    return(RawInstruction, PageNums)
 
 
 # Define function to build a set of instructions to follow
@@ -143,7 +124,7 @@ def PrepareHoldingStation(sct, ColorBlobSize, station, PauseTime, AllRecipeOpts,
 
 
 # Define function to serve food from a service station and detect results
-def Serve(sct, ImgServeRegion, serviceStation, PauseTime):
+def Serve(sct, ImgServeRegion, ColorBlobSize, serviceStation, PauseTime):
     # Determine if food can be served, or is currently cooking
     if np.sum(cv2.inRange(ImgServeRegion, np.array([255, 255, 255]), np.array([255, 255, 255]))) > 45000:
 
@@ -151,7 +132,7 @@ def Serve(sct, ImgServeRegion, serviceStation, PauseTime):
         print('    Blocked/Waiting for Cooking.')
     else:
         # Attempt to insta-serve
-        robot.serve(sct, ImgServeRegion, serviceStation, PauseTime)
+        robot.serve(serviceStation, PauseTime)
 
         colorRGB = cv2.cvtColor(np.array(sct.grab(WindowGame)), cv2.COLOR_RGBA2RGB)
         ImgInstaTester = WindowExtractor(colorRGB, FoodRecipe, 0, 0)
@@ -161,12 +142,11 @@ def Serve(sct, ImgServeRegion, serviceStation, PauseTime):
             # If extra steps required
             print('        Extra steps required')
             ImgInstructionInputBig = cv2.cvtColor(np.array(sct.grab(WindowGame)), cv2.COLOR_RGBA2RGB)
-            FoodMaker(ImgInstructionInputBig, FoodRecipe)
+            FoodMaker(ImgInstructionInputBig, FoodRecipe, ColorBlobSize)
 
 
 def main():
     # Set stuff up
-    pytesseract.pytesseract.tesseract_cmd = 'C:/Program Files (x86)/Tesseract-OCR/tesseract'
     sct = mss.mss()
     HoldingStation_Capturing = 1
     # ImgHSRegion = np.zeros([HSRegion['height'], HSRegion['width'], 3, len(HSRegion['left'])]).astype('uint8')
@@ -209,7 +189,7 @@ def main():
 
     # Get image
     ImgInstructionInputBig = cv2.cvtColor(np.array(sct.grab(WindowGame)), cv2.COLOR_RGBA2RGB)
-    FoodMaker(ImgInstructionInputBig, FoodRecipe)
+    FoodMaker(ImgInstructionInputBig, FoodRecipe, ColorBlobSize)
 
     # A NEW DAWN OF FEASTING IS AT HAND
     start_time = time.time()
@@ -237,7 +217,7 @@ def main():
 
                 # Get section of screen
                 ImgServeRegion = WindowExtractor(ImgGameWindow, CookRegion, 0, serviceStation)
-                Serve(sct, ImgServeRegion, serviceStation, PauseTime)
+                Serve(sct, ImgServeRegion, ColorBlobSize, serviceStation, PauseTime)
 
     # Need to look for burning food and prioritise it!
 

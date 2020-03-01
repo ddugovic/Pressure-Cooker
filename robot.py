@@ -1,4 +1,5 @@
 # IMPORT
+from settings import ServingKeyBinds
 import pyautogui
 import random
 import time
@@ -107,7 +108,7 @@ def prepare(sct, ColorBlobSize, station, PauseTime, AllRecipeOpts, DoneOpts1, Do
 
 
 # Define function to serve food from a service station
-def serve(ServingKeyBinds, serviceStation, PauseTime):
+def serve(serviceStation, PauseTime):
     pyautogui.keyDown(ServingKeyBinds[str(serviceStation+1)])
     time.sleep(PauseTime)
     pyautogui.keyUp(ServingKeyBinds[str(serviceStation+1)])
