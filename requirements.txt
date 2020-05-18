@@ -4,7 +4,7 @@ opencv-python==4.2.0.34
 PyAutoGUI==0.9.48
 PyGetWindow==0.0.8
 PyMsgBox==1.0.7
-pyperclip==1.7.0
+pyperclip==1.8.0
 PyRect==0.1.4
 PyScreeze==0.1.26
 pytesseract==0.3.2
