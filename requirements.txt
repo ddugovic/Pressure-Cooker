@@ -1,5 +1,5 @@
 MouseInfo==0.1.2
-mss==5.0.0
+mss==5.1.0
 opencv-python==4.2.0.34
 PyAutoGUI==0.9.50
 PyGetWindow==0.0.8
