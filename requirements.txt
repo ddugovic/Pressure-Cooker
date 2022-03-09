@@ -9,4 +9,4 @@ PyRect==0.1.4
 PyScreeze==0.1.28
 pytesseract==0.3.9
 python3-xlib==0.15
-PyTweening==1.0.3
+PyTweening==1.0.4
