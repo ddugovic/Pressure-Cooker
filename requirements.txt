@@ -6,7 +6,7 @@ PyGetWindow==0.0.9
 PyMsgBox==1.0.9
 pyperclip==1.9.0
 PyRect==0.2.0
-PyScreeze==0.1.30
+PyScreeze==1.0.1
 pytesseract==0.3.13
 python3-xlib==0.15
 PyTweening==1.2.0
